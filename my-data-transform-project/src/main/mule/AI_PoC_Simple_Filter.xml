@@ -1,0 +1,38 @@
+<flow name="AI_PoC_Simple_Filter">
+  <http:listener config-ref="HTTP_Listener_Config" path="/ai_poc_simple_filter" doc:name="HTTP Listener"/>
+  <set-variable variableName="input_map" value="{}" doc:name="Initialize input_map"/>
+  <set-variable variableName="output_map" value="{}" doc:name="Initialize output_map"/>
+  <set-variable variableName="skip" value="false" doc:name="Initialize skip flag"/>
+  <logger message="Received message: #[payload]" level="INFO" doc:name="Log Incoming Message"/>
+  <dw:transform-message doc:name="Parse HL7 Message">
+    <dw:set-payload><![CDATA[
+      var input_map = parse_hl7_message(payload);
+      if (input_map contains 'MSA' and input_map['MSA'] sizeOf > 0) {
+        var msa_message = input_map['MSA'][0]['MSA-3-text_message'];
+        if (msa_message contains 'ZZZ') {
+          skip = true;
+        }
+      } else {
+        skip = true;
+      }
+    ]]></dw:set-payload>
+  </dw:transform-message>
+  <choice doc:name="Check Skip Flag">
+    <when expression="vars.skip">
+      <set-variable variableName="output_map" value="{}" doc:name="Clear output_map"/>
+    </when>
+    <otherwise>
+      <set-variable variableName="output_map['MSH']" value="vars.input_map['MSH']" doc:name="Copy MSH to output_map"/>
+      <set-variable variableName="output_map['MSA']" value="vars.input_map['MSA']" doc:name="Copy MSA to output_map"/>
+    </otherwise>
+  </choice>
+  <set-payload value="write(vars.output_map, 'application/json')" doc:name="Convert output_map to JSON"/>
+  <logger message="Processed message: #[payload]" level="INFO" doc:name="Log Processed Message"/>
+  <set-variable variableName="input_map" value="{}" doc:name="Clear input_map"/>
+  <set-variable variableName="output_map" value="{}" doc:name="Clear output_map"/>
+  <error-handler>
+    <on-error-continue doc:name="Error Handling">
+      <set-payload value="''" doc:name="Return Empty String on Error"/>
+    </on-error-continue>
+  </error-handler>
+</flow>
