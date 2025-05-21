@@ -1,0 +1,29 @@
+<flow name="AI_PoC_Simple_FilterCollaboration">
+  <http:listener config-ref="HTTP_Listener_Configuration" path="/process" doc:name="HTTP Listener"/>
+  <set-variable variableName="message_string" value="#[payload]" doc:name="Set Message String"/>
+  <set-variable variableName="input_map" value="#[{}]" doc:name="Initialize Input Map"/>
+  <set-variable variableName="output_map" value="#[{}]" doc:name="Initialize Output Map"/>
+  <set-variable variableName="input_map" value="#[parse_hl7_message(vars.message_string)]" doc:name="Parse HL7 Message"/>
+  <set-variable variableName="skip" value="#[false]" doc:name="Initialize Skip Flag"/>
+  <choice doc:name="Choice">
+    <when expression="#[vars.input_map['MSA'] != null]">
+      <set-variable variableName="msa_message" value="#[vars.input_map['MSA'][0]['MSA-3-text_message']]" doc:name="Get MSA Message"/>
+      <choice doc:name="Inner Choice">
+        <when expression="#[vars.msa_message contains 'ZZZ']">
+          <set-variable variableName="skip" value="#[true]" doc:name="Set Skip Flag"/>
+        </when>
+      </choice>
+    </when>
+  </choice>
+  <choice doc:name="Skip Check">
+    <when expression="#[vars.skip]">
+      <set-variable variableName="output_map" value="#[{}]" doc:name="Clear Output Map"/>
+    </when>
+    <otherwise>
+      <set-variable variableName="output_map['MSH']" value="#[vars.input_map['MSH']]" doc:name="Copy MSH to Output Map"/>
+      <set-variable variableName="output_map['MSA']" value="#[vars.input_map['MSA']]" doc:name="Copy MSA to Output Map"/>
+    </otherwise>
+  </choice>
+  <set-variable variableName="hl7_string" value="#[convert_to_hl7_string(vars.output_map)]" doc:name="Convert to HL7 String"/>
+  <return value="#[vars.hl7_string]" doc:name="Return Processed Message String"/>
+</flow>
