@@ -1,0 +1,26 @@
+<package xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/mule-dw.xsd">
+    <flow name="AI_PoC_Simple_FilterCollaboration">
+        <http:listener config-ref="HTTP_Listener_Config" path="/processAck" doc:name="HTTP Listener"/>
+        <set-variable variableName="message_string" value="#[payload]" doc:name="Set Message String"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload mimeType="text/plain"/>
+            <dw:set-payload><![CDATA[ 
+                process_ack_message(vars.message_string) 
+            ]]></dw:set-payload>
+        </dw:transform-message>
+        <choice doc:name="Choice">
+            <when expression="#[payload == '']">
+                <set-status code="204" doc:name="No Content"/>
+            </when>
+            <otherwise>
+                <set-status code="200" doc:name="OK"/>
+                <set-payload value="#[payload]" doc:name="Set Payload"/>
+            </otherwise>
+        </choice>
+        <error-handler doc:name="Error Handler">
+            <on-error-continue>
+                <set-status code="500" doc:name="Internal Server Error"/>
+            </on-error-continue>
+        </error-handler>
+    </flow>
+</package>
