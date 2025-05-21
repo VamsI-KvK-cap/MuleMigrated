@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/mule-dw.xsd">
+    <http:listener-config name="HTTP_Listener_Config" host="0.0.0.0" port="8081" doc:name="HTTP Listener Config"/>
+    <flow name="AI_PoC_Simple_FilterCollaboration">
+        <http:listener config-ref="HTTP_Listener_Config" path="/processAck" allowedMethods="POST" doc:name="HTTP Listener"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload mimeType="application/xml" />
+            <dw:set-payload>dw::hl7_ack_processing::process_ack_message(payload)</dw:set-payload>
+        </dw:transform-message>
+        <choice doc:name="Choice">
+            <when expression="#[payload == '']">
+                <set-status value="204" doc:name="Set Status"/>
+            </when>
+            <otherwise>
+                <set-status value="200" doc:name="Set Status"/>
+                <set-payload value="#[payload]" doc:name="Set Payload"/>
+            </otherwise>
+        </choice>
+        <error-handler>
+            <on-error-propagate doc:name="On Error Propagate">
+                <set-status value="500" doc:name="Set Status"/>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+</mule>
