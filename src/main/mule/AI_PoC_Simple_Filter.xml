@@ -1,0 +1,57 @@
+<package>
+<flow name='AI_PoC_Simple_Filter'>
+  <http:listener config-ref='HTTP_Listener_config' path='/ai_poc_simple_filter' doc:name='HTTP Listener'/>
+  <set-variable variableName='input_map' value='{}' doc:name='Initialize input_map'/>
+  <set-variable variableName='output_map' value='{}' doc:name='Initialize output_map'/>
+  <transform-message doc:name='Parse HL7 Message'>
+    <input-payload mimeType='text/plain'/>
+    <dw:transform-message><![CDATA[
+      %dw 2.0
+      output application/json
+      var message_string = payload
+      var input_map = parse_hl7_message(message_string)
+      --- input_map
+    ]]></dw:transform-message>
+  </transform-message>
+  <set-variable variableName='skip' value='false' doc:name='Initialize skip flag'/>
+  <choice doc:name='Check MSA Segments'>
+    <when expression='input_map contains "MSA"'>
+      <logger level='INFO' message='More than one MSA segment present.'/>
+      <set-variable variableName='msa_message' value='input_map["MSA"][0]["MSA-3-text_message"]'/>
+      <choice>
+        <when expression='msa_message contains "ZZZ"'>
+          <set-variable variableName='skip' value='true'/>
+          <logger level='INFO' message='Message will be skipped.'/>
+        </when>
+        <otherwise>
+          <set-variable variableName='skip' value='false'/>
+          <logger level='INFO' message='Message will be processed.'/>
+        </otherwise>
+      </choice>
+    </when>
+    <otherwise>
+      <logger level='INFO' message='No MSA segments found.'/>
+      <set-variable variableName='skip' value='false'/>
+    </otherwise>
+  </choice>
+  <choice doc:name='Process Based on Skip Flag'>
+    <when expression='vars.skip'>
+      <set-variable variableName='output_map' value='{}'/>
+    </when>
+    <otherwise>
+      <set-variable variableName='output_map' value='{}'/>
+      <set-variable variableName='output_map["MSH"]' value='input_map["MSH"]'/>
+      <set-variable variableName='output_map["MSA"]' value='input_map["MSA"]'/>
+    </otherwise>
+  </choice>
+  <set-variable variableName='processed_message' value='string(vars.output_map)' doc:name='Convert Output Map to String'/>
+  <set-variable variableName='input_map' value='{}' doc:name='Clear input_map'/>
+  <set-variable variableName='output_map' value='{}' doc:name='Clear output_map'/>
+  <logger level='INFO' message='Returning processed message.'/>
+  <set-payload value='vars.processed_message' doc:name='Return Processed Message'/>
+  <error-handler>
+    <on-error-continue enableNotifications='true'>
+      <set-payload value='""' doc:name='Return Empty String on Error'/>
+    </on-error-continue>
+  </error-handler>
+</flow>
