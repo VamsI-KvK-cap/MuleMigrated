@@ -1,0 +1,28 @@
+<package>
+<http:listener-config name='HTTP_Listener_config' doc:name='HTTP Listener config' doc:id='listener-config-id'>
+  <http:listener-connection>
+    <http:host>0.0.0.0</http:host>
+    <http:port>8081</http:port>
+  </http:listener-connection>
+</http:listener-config>
+<flow name='AI_PoC_Simple_Filter' doc:name='AI_PoC_Simple_Filter' doc:id='flow-id'>
+  <http:listener doc:name='Listener' doc:id='listener-id' config-ref='HTTP_Listener_config' path='/ai_poc_simple_filter'/>
+  <logger level='INFO' doc:name='Logger' doc:id='logger-id' message='Received message: #[payload]'/>
+  <set-variable variableName='message_string' value='#[payload]' doc:name='Set Message String'/>
+  <transform-message doc:name='Transform Message' doc:id='transform-id'>
+    <input-payload mimeType='text/plain'/>
+    <output mimeType='application/json'/>
+    <dw:transform-message>
+      <dw:input-payload mimeType='text/plain'/>
+      <dw:set-payload><![CDATA[
+        ai_poc_simple_filter(vars.message_string)
+      ]]></dw:set-payload>
+    </dw:transform-message>
+  </transform-message>
+  <logger level='INFO' doc:name='Logger' doc:id='logger-output-id' message='Processed message: #[payload]'/>
+  <error-handler>
+    <on-error-continue enableNotifications='true' doc:name='On Error Continue'>
+      <logger level='ERROR' doc:name='Error Logger' message='Error occurred: #[error.message]'/>
+    </on-error-continue>
+  </error-handler>
+</flow>
