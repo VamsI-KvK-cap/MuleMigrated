@@ -1,0 +1,44 @@
+<package>
+<flow name="AI_PoC_Simple_Filter_Collaboration" doc:name="AI_PoC_Simple_Filter_Collaboration">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <http:listener path="/filter" config-ref="HTTP_Listener_config" doc:name="HTTP Listener"/>
+  <logger message="Received message: ++ payload" level="INFO" doc:name="Log Received Message"/>
+  <set-variable variableName="input_map" value="{}" doc:name="Initialize input_map"/>
+  <set-variable variableName="output_map" value="{}" doc:name="Initialize output_map"/>
+  <set-variable variableName="skip" value="false" doc:name="Initialize skip flag"/>
+  <dw:transform-message doc:name="Transform Message">
+    <dw:set-payload><![CDATA[
+      %dw 2.0
+      output application/json
+      var input_map = parse_hl7_message(payload)
+      var output_map = {}
+      if (input_map containsKey 'MSA') {
+        var msa_segments = input_map['MSA']
+        if (sizeOf(msa_segments) > 1) {
+          log('More than one MSA segment present.')
+        }
+        var msa_text_message = msa_segments[0]['MSA-3-text_message']
+        if (msa_text_message contains 'ZZZ') {
+          skip = true
+          log('Message will be skipped.')
+        } else {
+          log('Message will be processed.')
+        }
+      } else {
+        log('No MSA segments found.')
+      }
+      if (!skip) {
+        output_map['MSH'] = input_map['MSH']
+        output_map['MSA'] = input_map['MSA']
+      } else {
+        output_map = {}
+      }
+      return write(output_map, 'application/json') default ""
+    ]]></dw:set-payload>
+  </dw:transform-message>
+  <logger message="Processed message: ++ payload" level="INFO" doc:name="Log Processed Message"/>
+  <set-variable variableName="input_map" value="{}" doc:name="Clear input_map"/>
+  <set-variable variableName="output_map" value="{}" doc:name="Clear output_map"/>
+</flow>
