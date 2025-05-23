@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:mule="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/mule-dw.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
+    <http:listener-connection/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterFlow">
+    <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/process-hl7-ack"/>
+    <transform doc:name="Transform Message">
+      <input-payload mimeType="application/xml"/>
+      <dw:transform-message doc:name="Transform Message">
+        <dw:set-payload><![CDATA[
+          try {
+            if (payload.message_string.MSA[0].MSA-3-text_message != "ZZZ") {
+              process_hl7_ack(payload.message_string)
+            } else {
+              ""
+            }
+          } catch (e) {
+            ""
+          }
+        ]]></dw:set-payload>
+      </dw:transform-message>
+    </transform>
+    <logger level="INFO" doc:name="Logger" message="Processed message: #[payload]"/>
+  </flow>
+  <dw:transform-message name="process_hl7_ack" doc:name="Process HL7 ACK">
+    <dw:set-payload><![CDATA[
+      // Define the transformation logic here
+    ]]></dw:set-payload>
+  </dw:transform-message>
+</mule>
