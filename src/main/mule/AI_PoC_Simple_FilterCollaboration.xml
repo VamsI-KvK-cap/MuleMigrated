@@ -1,0 +1,69 @@
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/data-weave" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/data-weave http://www.mulesoft.org/schema/mule/data-weave/current/mule-data-weave.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="http_listener_config_id">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterCollaboration" doc:id="flow_id">
+    <http:listener doc:name="Listener" doc:id="listener_id" config-ref="HTTP_Listener_config" path="/processHL7"/>
+    <logger message="Received message: ++ payload" level="INFO" doc:name="Log Received Message"/>
+    <set-variable variableName="input_map" value="{}" doc:name="Initialize input_map"/>
+    <set-variable variableName="output_map" value="{}" doc:name="Initialize output_map"/>
+    <set-variable variableName="skip" value="false" doc:name="Initialize skip flag"/>
+    <dw:transform-message doc:name="Parse HL7 Message" doc:id="transform_id">
+      <dw:set-payload><![CDATA[
+        %dw 2.0
+        output application/json
+        var input_map = parse_hl7_message(payload)
+        ---
+        input_map
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <choice doc:name="Check MSA Segments">
+      <when expression="size(vars.input_map.MSA) > 0">
+        <logger message="More than one MSA segment found" level="INFO" doc:name="Log MSA Found"/>
+        <set-variable variableName="msa_segment" value="vars.input_map.MSA[0]" doc:name="Retrieve MSA Segment"/>
+        <set-variable variableName="msa_text_message" value="vars.msa_segment['MSA-3-text_message']" doc:name="Retrieve MSA-3 Text Message"/>
+        <choice doc:name="Check for 'ZZZ' in MSA-3">
+          <when expression="vars.msa_text_message contains 'ZZZ'">
+            <set-variable variableName="skip" value="true" doc:name="Set Skip to True"/>
+            <logger message="Message will be skipped" level="INFO" doc:name="Log Skip"/>
+          </when>
+          <otherwise>
+            <set-variable variableName="skip" value="false" doc:name="Set Skip to False"/>
+            <logger message="Message will be processed" level="INFO" doc:name="Log Process"/>
+          </otherwise>
+        </choice>
+      </when>
+      <otherwise>
+        <logger message="No MSA segments found" level="INFO" doc:name="Log No MSA"/>
+        <set-variable variableName="skip" value="false" doc:name="Set Skip to False"/>
+      </otherwise>
+    </choice>
+    <choice doc:name="Process Based on Skip Flag">
+      <when expression="vars.skip == true">
+        <set-variable variableName="output_map" value="{}" doc:name="Clear Output Map"/>
+      </when>
+      <otherwise>
+        <set-variable variableName="output_map.MSH" value="vars.input_map.MSH[0]" doc:name="Copy MSH to Output Map"/>
+        <set-variable variableName="output_map.MSA" value="vars.input_map.MSA[0]" doc:name="Copy MSA to Output Map"/>
+      </otherwise>
+    </choice>
+    <dw:transform-message doc:name="Convert Output Map to String" doc:id="convert_id">
+      <dw:set-payload><![CDATA[
+        %dw 2.0
+        output application/json
+        ---
+        vars.output_map as String
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <set-variable variableName="input_map" value="{}" doc:name="Clear Input Map"/>
+    <set-variable variableName="output_map" value="{}" doc:name="Clear Output Map"/>
+    <logger message="Processed message: ++ payload" level="INFO" doc:name="Log Processed Message"/>
+    <set-payload value="payload" doc:name="Set Payload"/>
+    <error-handler>
+      <on-error-continue enableNotifications="true" doc:name="Error Handler">
+        <logger message="Error occurred: #[error.message]" level="ERROR" doc:name="Log Error"/>
+        <set-payload value="{}" doc:name="Set Empty Payload"/>
+      </on-error-continue>
+    </error-handler>
+  </flow>
+</mule>
