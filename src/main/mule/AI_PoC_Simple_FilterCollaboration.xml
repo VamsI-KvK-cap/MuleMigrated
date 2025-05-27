@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/data-weave" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/data-weave http://www.mulesoft.org/schema/mule/data-weave/current/mule-data-weave.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="listener-config-id">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterCollaboration" doc:id="flow-id">
+    <http:listener doc:name="Listener" doc:id="listener-id" config-ref="HTTP_Listener_config" path="/processHL7"/>
+    <dw:transform-message doc:name="Transform Message" doc:id="transform-id">
+      <dw:set-payload><![CDATA[
+        AI_PoC_Simple_Filter(payload)
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: ++ payload" level="INFO" doc:name="Log Processed Message"/>
+    <error-handler>
+      <on-error-continue enableNotifications="true">
+        <logger message="Error processing message: ++ error.message" level="ERROR" doc:name="Log Error"/>
+        <set-payload value="" doc:name="Set Empty Payload"/>
+      </on-error-continue>
+    </error-handler>
+  </flow>
+</mule>
