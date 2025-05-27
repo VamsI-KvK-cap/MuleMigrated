@@ -1,0 +1,39 @@
+package src.main.mule;
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/data-weave" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/data-weave http://www.mulesoft.org/schema/mule/data-weave/current/mule-data-weave.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="http_listener_config_id">
+    <http:listener-connection/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterCollaboration" doc:id="flow_id">
+    <http:listener doc:name="Listener" doc:id="listener_id" config-ref="HTTP_Listener_config" path="/processHL7"/>
+    <dw:transform-message doc:name="Transform Message" doc:id="transform_id">
+      <dw:set-payload><![CDATA[
+        %dw 2.0
+        output application/json
+        var input_map = {}
+        var output_map = {}
+        var skip = false
+        try {
+          input_map = parse_hl7_message(payload)
+          if (input_map contains 'MSA') {
+            var msa_segment = input_map['MSA'][0]
+            var msa_text_message = msa_segment['MSA-3-text_message']
+            if (msa_text_message contains 'ZZZ') {
+              skip = true
+            }
+          } else {
+            skip = false
+          }
+          if (!skip) {
+            output_map['MSH'] = input_map['MSH']
+            output_map['MSA'] = input_map['MSA']
+          }
+        } catch (e) {
+          output_map['error'] = "Error processing message: " ++ e.message
+        }
+        return skip ? '' : write(output_map, 'application/json')
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: ++ [payload]" level="INFO" doc:name="Log Processed Message"/>
+  </flow>
+</mule>
