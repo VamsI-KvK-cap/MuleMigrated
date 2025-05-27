@@ -1,0 +1,34 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>hl7-message-processor</artifactId>
+  <version>1.0.0</version>
+  <packaging>mule</packaging>
+  <dependencies>
+    <dependency>
+      <groupId>org.mule.modules</groupId>
+      <artifactId>mule-http-connector</artifactId>
+      <version>1.5.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.modules</groupId>
+      <artifactId>mule-dw-connector</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.modules</groupId>
+      <artifactId>mule-error-handling</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.modules</groupId>
+      <artifactId>mule-logging</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.modules</groupId>
+      <artifactId>mule-unit-testing</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+  </dependencies>
+</project>
