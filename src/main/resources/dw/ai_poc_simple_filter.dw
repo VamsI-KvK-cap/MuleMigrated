@@ -1,0 +1,31 @@
+package dw.ai_poc_simple_filter
+
+%dw 2.0
+output application/json
+fun ai_poc_simple_filter(message_string) {
+    var input_map = {}
+    var output_map = {}
+    try {
+        input_map = parse_hl7_message(message_string)
+        output_map = {}
+        var skip = false
+        if (input_map['MSA'] != null) {
+            var msa_message = input_map['MSA']['MSA-3-text_message']
+            if (msa_message contains 'ZZZ') {
+                skip = true
+            }
+        } else {
+            skip = false
+        }
+        if (!skip) {
+            output_map['MSH'] = input_map['MSH']
+            output_map['MSA'] = input_map['MSA']
+        }
+        var result = output_map as String
+        input_map = {}
+        output_map = {}
+        return result
+    } catch (error) {
+        return ''
+    }
+}
