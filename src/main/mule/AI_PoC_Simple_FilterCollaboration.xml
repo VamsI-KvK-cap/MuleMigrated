@@ -1,0 +1,40 @@
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/data-weave" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/data-weave http://www.mulesoft.org/schema/mule/data-weave/current/mule-data-weave.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterFlow">
+    <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/ai_poc_simple_filter"/>
+    <set-variable variableName="input_map" value="{}" doc:name="Initialize input_map"/>
+    <set-variable variableName="output_map" value="{}" doc:name="Initialize output_map"/>
+    <dw:transform-message doc:name="Transform Message">
+      <dw:set-payload><![CDATA[
+        %dw 2.0
+        output application/json
+        var input_map = payload
+        var output_map = {}
+        var skip = false
+        var msa_segment = input_map.MSA
+        if (msa_segment != null) {
+          if (msa_segment[2] == "ZZZ") {
+            skip = true
+          }
+        }
+        if (!skip) {
+          output_map.MSH = input_map.MSH
+          output_map.MSA = msa_segment
+        }
+        var result = output_map as String
+        vars.input_map = {}
+        vars.output_map = {}
+        return result
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: ++ [payload]" level="INFO" doc:name="Log Processed Message"/>
+    <error-handler>
+      <on-error-continue enableNotifications="true">
+        <logger message="Error processing message: ++ [error.message]" level="ERROR" doc:name="Log Error"/>
+        <set-payload value="''" doc:name="Set Empty Payload on Error"/>
+      </on-error-continue>
+    </error-handler>
+  </flow>
+</mule>
