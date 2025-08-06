@@ -1,0 +1,44 @@
+%dw 2.0
+output application/json
+
+fun parse_hl7_message(message_string) =
+    // Logic to parse HL7 message into a map structure
+    // Example implementation for demonstration purposes
+    {
+        MSH: message_string match /(?<=MSH\|).*?(?=\r)/,
+        MSA: message_string match /(?<=MSA\|).*?(?=\r)/ map ((segment) -> { text_message: segment })
+    }
+
+fun ai_poc_simple_filter_collaboration(message_string) {
+    var input_map = {}
+    var output_map = {}
+    var skip = false
+    try {
+        input_map = parse_hl7_message(message_string)
+        output_map = {}
+        if (input_map.MSA) {
+            if (input_map.MSA.size() > 1) {
+                // Handle multiple MSA segments
+            }
+            var msa_text_message = input_map.MSA[0].text_message
+            if (msa_text_message contains 'ZZZ') {
+                skip = true
+            } else {
+                skip = false
+            }
+        } else {
+            skip = false
+        }
+        if (!skip) {
+            output_map.MSH = input_map.MSH
+            output_map.MSA = input_map.MSA
+        }
+        var output_string = write(output_map, 'application/json')
+        return skip ? '' : output_string
+    } catch (error) {
+        return ''
+    } finally {
+        input_map = {}
+        output_map = {}
+    }
+}
