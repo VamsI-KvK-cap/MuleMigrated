@@ -1,0 +1,41 @@
+%dw 2.0
+output application/hl7
+
+fun ai_poc_simple_filter_collaboration(message_string) {
+  var input_map = {}
+  var output_map = {}
+  var skip = false
+  try {
+    input_map = parse_hl7_message(message_string)
+    output_map = {}
+    if (input_map.MSA) {
+      if (input_map.MSA.size() > 1) {
+        log("Multiple MSA segments found")
+      }
+      var msa_text_message = input_map.MSA[0].text_message
+      if (msa_text_message contains 'ZZZ') {
+        skip = true
+        log("Skip flag set to true")
+      } else {
+        skip = false
+        log("Skip flag set to false")
+      }
+    } else {
+      log("No MSA segments found")
+      skip = false
+    }
+    log("Skip flag value: " ++ skip)
+    if (!skip) {
+      output_map.MSH = input_map.MSH
+      output_map.MSA = input_map.MSA
+    }
+    var output_string = write(output_map, 'application/hl7')
+    return skip ? '' : output_string
+  } catch (error) {
+    log("Error occurred: " ++ error.message)
+    return ''
+  } finally {
+    input_map = {}
+    output_map = {}
+  }
+}
