@@ -1,0 +1,30 @@
+package src.main.mule;
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/mule-dw.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="http_listener_config_id">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterCollaboration" doc:id="flow_id">
+    <http:listener doc:name="Listener" doc:id="listener_id" config-ref="HTTP_Listener_config" path="/processHL7"/>
+    <dw:transform-message doc:name="Transform Message" doc:id="transform_id">
+      <dw:set-payload><![CDATA[
+        %dw 2.0
+        output application/json
+        var hl7Segments = (payload as String) splitBy "\r"
+        ---
+        {
+          MSH: (hl7Segments filter ((segment) -> segment startsWith "MSH|"))[0] default null,
+          MSA: (hl7Segments filter ((segment) -> segment startsWith "MSA|"))[0] default null,
+          otherSegments: hl7Segments filter ((segment) -> not (segment startsWith "MSH|" or segment startsWith "MSA|"))
+        }
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: #[write(payload, 'application/json')]" level="INFO" doc:name="Log Processed Message"/>
+    <error-handler>
+      <on-error-continue enableNotifications="true" doc:name="Error Handler">
+        <logger message="Error occurred: #[error.errorType] | #[error.description] | #[error.cause]" level="ERROR" doc:name="Log Error"/>
+        <set-payload><![CDATA[{"error": "An error occurred during processing", "details": #[error.description]}]]></set-payload>
+      </on-error-continue>
+    </error-handler>
+  </flow>
+</mule>
