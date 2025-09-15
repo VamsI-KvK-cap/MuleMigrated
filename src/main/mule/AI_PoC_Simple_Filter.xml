@@ -1,0 +1,25 @@
+package main.mule;
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/mule-dw.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterFlow">
+    <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/ai_poc_simple_filter"/>
+    <dw:transform-message doc:name="Transform Message">
+      <dw:set-payload><![CDATA[
+        %dw 2.0
+        output application/json
+        ---
+        ai_poc_simple_filter(payload)
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: ++ payload" level="INFO" doc:name="Log Processed Message"/>
+    <error-handler>
+      <on-error-continue enableNotifications="true" doc:name="Error Handler">
+        <logger message="Error occurred: #[error.message]" level="ERROR" doc:name="Log Error"/>
+      </on-error-continue>
+    </error-handler>
+    <set-payload value="payload" doc:name="Set Payload"/>
+  </flow>
+</mule>
