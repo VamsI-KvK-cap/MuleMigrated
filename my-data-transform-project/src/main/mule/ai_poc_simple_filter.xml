@@ -1,0 +1,20 @@
+<flow name="AI_PoC_Simple_Filter">
+    <http:listener config-ref="HTTP_Listener_config" path="/ai_poc_simple_filter" doc:name="HTTP Listener" doc:id="listener"/>
+    <try>
+        <set-variable variableName="input_message" value="#[payload]" doc:name="Set Input Message" doc:id="setInputMessage"/>
+        <set-variable variableName="processed_message" value="#[process_ack_message(vars.input_message)]" doc:name="Process ACK Message" doc:id="processAckMessage"/>
+    </try>
+    <catch-exception-strategy doc:name="Error Handling" doc:id="errorHandling">
+        <set-variable variableName="response.status" value="500" doc:name="Set Response Status" doc:id="setResponseStatus500"/>
+        <return value="" doc:name="Return Empty String" doc:id="returnEmptyString500"/>
+    </catch-exception-strategy>
+    <choice doc:name="Choice" doc:id="choice">
+        <when expression="#[vars.processed_message == '']">
+            <set-variable variableName="response.status" value="400" doc:name="Set Response Status" doc:id="setResponseStatus400"/>
+            <return value="" doc:name="Return Empty String" doc:id="returnEmptyString400"/>
+        </when>
+        <otherwise>
+            <return value="#[vars.processed_message]" doc:name="Return Processed Message" doc:id="returnProcessedMessage"/>
+        </otherwise>
+    </choice>
+</flow>
