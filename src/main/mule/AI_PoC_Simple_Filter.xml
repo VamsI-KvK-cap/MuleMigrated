@@ -1,0 +1,31 @@
+package src.main.mule;
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:dw="http://www.mulesoft.org/schema/mule/dataweave" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/dataweave http://www.mulesoft.org/schema/mule/dataweave/current/mule-dataweave.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
+    <http:listener-connection/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_Filter">
+    <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/ai_poc_simple_filter"/>
+    <logger message="Received message: ++ payload" level="INFO" doc:name="Log Received Message"/>
+    <set-variable variableName="message_string" value="payload" doc:name="Set Message String"/>
+    <dw:transform-message doc:name="Transform Message">
+      <dw:set-payload>
+        dw('/src/main/resources/dw/ai_poc_simple_filter.dw', 'ai_poc_simple_filter', vars.message_string)
+      </dw:set-payload>
+    </dw:transform-message>
+    <choice doc:name="Filter Message">
+      <when expression="#[payload.MSA[0].ZZZ != null]">
+        <logger message="Processed message: ++ payload" level="INFO" doc:name="Log Processed Message"/>
+      </when>
+      <otherwise>
+        <set-payload value="''" doc:name="Set Empty Payload"/>
+      </otherwise>
+    </choice>
+    <error-handler>
+      <on-error-continue enableNotifications="true">
+        <logger message="Error occurred: ++ error.message" level="ERROR" doc:name="Log Error"/>
+        <set-payload value="''" doc:name="Set Empty Payload"/>
+      </on-error-continue>
+    </error-handler>
+  </flow>
+</mule>
