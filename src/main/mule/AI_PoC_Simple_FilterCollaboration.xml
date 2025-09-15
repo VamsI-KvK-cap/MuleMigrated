@@ -1,0 +1,35 @@
+<package>
+<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="listener-config-id">
+  <http:listener-connection host="0.0.0.0" port="8081"/>
+</http:listener-config>
+<flow name="AI_PoC_Simple_FilterCollaboration" doc:id="flow-id">
+  <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/filter"/>
+  <set-variable variableName="input_map" value="{}" doc:name="Initialize input_map"/>
+  <set-variable variableName="output_map" value="{}" doc:name="Initialize output_map"/>
+  <set-variable variableName="skip" value="false" doc:name="Initialize skip flag"/>
+  <dw:transform-message doc:name="Transform Message" doc:id="transform-id">
+    <dw:set-payload><![CDATA[
+      %dw 2.0
+      output application/json
+      var input_map = parse_hl7_message(payload)
+      var output_map = {}
+      var skip = false
+      if (input_map.MSA) {
+        var msa_segment = input_map.MSA[0]
+        var msa_text_message = msa_segment['MSA-3-text_message']
+        if (msa_text_message contains 'ZZZ') {
+          skip = true
+        }
+      }
+      if (!skip) {
+        output_map.MSH = input_map.MSH[0]
+        output_map.MSA = input_map.MSA[0]
+      }
+      write(output_map, 'application/json')
+    ]]></dw:set-payload>
+  </dw:transform-message>
+  <logger message="Processed message: #[payload]" level="INFO" doc:name="Log Processed Message"/>
+  <set-payload value="#[payload]" doc:name="Set Payload"/>
+  <set-variable variableName="input_map" value="{}" doc:name="Clear input_map"/>
+  <set-variable variableName="output_map" value="{}" doc:name="Clear output_map"/>
+</flow>
