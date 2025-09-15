@@ -1,0 +1,62 @@
+%dw 2.0
+output application/json
+
+fun parse_hl7_message(str_message) {
+  var segments = str_message splitBy '\r'
+  var parsed_message = {}
+
+  var segment_mapping = {
+    'MSH': 'MSH_struct',
+    'MSA': 'MSA_struct',
+    'ERR': 'ERR_struct'
+  }
+
+  for (segment in segments) {
+    var segment_parts = segment splitBy '|'
+    var segment_id = segment_parts[0]
+    var segment_structure = segment_mapping[segment_id]
+
+    var segment_object = {}
+
+    if (segment_structure == 'MSH_struct') {
+      segment_object['segment_ID'] = segment_parts[0]
+      segment_object['encoding_characters'] = segment_parts[1]
+      segment_object['sending_application'] = parse_hd(segment_parts[2])
+      segment_object['sending_facility'] = parse_hd(segment_parts[3])
+      segment_object['receiving_application'] = parse_hd(segment_parts[4])
+      segment_object['receiving_facility'] = parse_hd(segment_parts[5])
+      segment_object['datetime_of_message'] = segment_parts[6]
+      segment_object['security'] = segment_parts[7]
+      segment_object['message_type'] = segment_parts[8]
+      segment_object['message_control_ID'] = segment_parts[9]
+      segment_object['processing_id'] = segment_parts[10]
+      segment_object['version_ID'] = segment_parts[11]
+    } else if (segment_structure == 'MSA_struct') {
+      segment_object['segment_ID'] = segment_parts[0]
+      segment_object['acknowledgment_code'] = segment_parts[1]
+      segment_object['message_control_ID'] = segment_parts[2]
+      segment_object['text_message'] = segment_parts[3]
+      segment_object['expected_sequence_number'] = segment_parts[4]
+      segment_object['delayed_acknowledgment_type'] = segment_parts[5]
+    } else if (segment_structure == 'ERR_struct') {
+      segment_object['segment_ID'] = segment_parts[0]
+      segment_object['error_code'] = segment_parts[1]
+      segment_object['error_severity'] = segment_parts[2]
+      segment_object['error_location'] = segment_parts[3]
+      segment_object['error_text'] = segment_parts[4]
+    }
+
+    parsed_message[segment_id] = segment_object
+  }
+
+  return parsed_message
+}
+
+fun parse_hd(segment) {
+  var hd_parts = segment splitBy '^'
+  return {
+    'namespace_ID': hd_parts[0],
+    'universal_ID': hd_parts[1],
+    'universal_ID_type': hd_parts[2]
+  }
+}
