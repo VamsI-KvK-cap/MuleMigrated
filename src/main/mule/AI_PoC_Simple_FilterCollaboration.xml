@@ -1,0 +1,45 @@
+<package xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    <http:listener-config name="HTTP_Listener_config" host="0.0.0.0" port="8081" doc:name="HTTP Listener config"/>
+    <flow name="AI_PoC_Simple_Filter">
+        <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/process"/>
+        <set-variable variableName="input_map" value="#[{}]" doc:name="Initialize input_map"/>
+        <set-variable variableName="output_map" value="#[{}]" doc:name="Initialize output_map"/>
+        <set-variable variableName="message_string" value="#[payload]" doc:name="Set message_string"/>
+        <set-variable variableName="input_map" value="#[parse_hl7_message(vars.message_string)]" doc:name="Parse HL7 Message"/>
+        <set-variable variableName="skip" value="false" doc:name="Initialize skip flag"/>
+        <choice doc:name="Choice">
+            <when expression="#[vars.input_map.containsKey('MSA')]">
+                <logger level="INFO" doc:name="Log MSA segments" message="More than one MSA segment present."/>
+                <set-variable variableName="msa_segment" value="#[vars.input_map['MSA'][0]]" doc:name="Get MSA segment"/>
+                <set-variable variableName="msa_text_message" value="#[vars.msa_segment['MSA-3-text_message']]" doc:name="Get MSA-3 text message"/>
+                <choice doc:name="Check MSA-3 text message">
+                    <when expression="#[vars.msa_text_message contains 'ZZZ']">
+                        <set-variable variableName="skip" value="true" doc:name="Set skip to true"/>
+                        <logger level="INFO" doc:name="Log skip" message="Message will be skipped."/>
+                    </when>
+                    <otherwise>
+                        <set-variable variableName="skip" value="false" doc:name="Set skip to false"/>
+                        <logger level="INFO" doc:name="Log process" message="Message will be processed."/>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <logger level="INFO" doc:name="Log no MSA segments" message="No MSA segments found."/>
+                <set-variable variableName="skip" value="false" doc:name="Set skip to false"/>
+            </otherwise>
+        </choice>
+        <choice doc:name="Skip or Process">
+            <when expression="#[vars.skip]">
+                <set-variable variableName="output_map" value="#[{}]" doc:name="Clear output_map"/>
+            </when>
+            <otherwise>
+                <set-variable variableName="output_map" value="#[vars.input_map['MSH']]" doc:name="Copy MSH to output_map"/>
+                <set-variable variableName="output_map" value="#[vars.output_map ++ {'MSA': vars.input_map['MSA']}]" doc:name="Copy MSA to output_map"/>
+            </otherwise>
+        </choice>
+        <set-variable variableName="processed_message" value="#[convert_to_string(vars.output_map)]" doc:name="Convert output_map to string"/>
+        <set-variable variableName="input_map" value="#[{}]" doc:name="Clear input_map"/>
+        <set-variable variableName="output_map" value="#[{}]" doc:name="Clear output_map"/>
+        <set-payload value="#[vars.processed_message]" doc:name="Set processed message"/>
+    </flow>
+</package>
