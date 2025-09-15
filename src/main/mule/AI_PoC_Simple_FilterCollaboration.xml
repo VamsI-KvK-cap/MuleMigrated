@@ -1,0 +1,26 @@
+package src.main.mule;
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/dataweave" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="listener-config-id">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterFlow" doc:id="flow-id">
+    <http:listener doc:name="Listener" doc:id="listener-id" config-ref="HTTP_Listener_config" path="/processHL7"/>
+    <dw:transform-message doc:name="Transform HL7 to JSON" doc:id="transform-id">
+      <dw:set-payload><![CDATA[
+        if (isValidHL7(payload)) {
+          process_ack_message(payload)
+        } else {
+          ""
+        }
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: ++ [payload]" level="INFO" doc:name="Log Processed Message"/>
+    <error-handler>
+      <on-error-continue enableNotifications="true">
+        <logger message="Error processing message: ++ [error.message]" level="ERROR" doc:name="Log Error"/>
+        <set-payload value="Error occurred during processing." doc:name="Set Error Payload"/>
+      </on-error-continue>
+    </error-handler>
+  </flow>
+</mule>
