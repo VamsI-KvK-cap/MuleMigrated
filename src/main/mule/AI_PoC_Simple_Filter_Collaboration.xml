@@ -1,0 +1,37 @@
+<package>
+<flow name="AI_PoC_Simple_Filter_Collaboration">
+    <http:listener config-ref="HTTP_Listener_Configuration" path="/hl7" doc:name="HTTP Listener"/>
+    <logger level="INFO" doc:name="Log Incoming Message" message="Received message: #[payload]"/>
+    <set-variable variableName="input_map" value="#[{}]" doc:name="Initialize input_map"/>
+    <set-variable variableName="output_map" value="#[{}]" doc:name="Initialize output_map"/>
+    <set-variable variableName="skip" value="false" doc:name="Initialize skip flag"/>
+    <dw:transform-message doc:name="Parse HL7 Message">
+        <dw:set-payload>
+            <![CDATA[%dw 2.0
+            output application/java
+            var parse_hl7_message = (str_message) -> {
+                // Implement HL7 parsing logic here
+            }
+            ---
+            parse_hl7_message(payload)]]>
+        </dw:set-payload>
+    </dw:transform-message>
+    <choice doc:name="Check for MSA Segments">
+        <when expression="#[vars.input_map contains 'MSA']">
+            <set-variable variableName="msa_message" value="#[vars.input_map['MSA'][0]['MSA-3-text_message']]" doc:name="Retrieve MSA-3-text_message"/>
+            <choice doc:name="Check for 'ZZZ'">
+                <when expression="#[vars.msa_message contains 'ZZZ']">
+                    <set-variable variableName="skip" value="true" doc:name="Set skip flag to true"/>
+                </when>
+            </choice>
+        </when>
+    </choice>
+    <choice doc:name="Skip or Copy Segments">
+        <when expression="#[vars.skip == false]">
+            <set-variable variableName="output_map['MSH']" value="#[vars.input_map['MSH']]" doc:name="Copy MSH Segment"/>
+            <set-variable variableName="output_map['MSA']" value="#[vars.input_map['MSA']]" doc:name="Copy MSA Segment"/>
+        </when>
+    </choice>
+    <set-payload value="#[vars.skip ? '' : vars.output_map as String]" doc:name="Set Output String"/>
+    <logger level="INFO" doc:name="Log Output" message="Output message: #[payload]"/>
+</flow>
