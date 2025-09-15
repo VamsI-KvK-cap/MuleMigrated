@@ -1,0 +1,49 @@
+package src.main.mule;
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/mule-dw.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="listener-config-id">
+    <http:listener-connection host="0.0.0.0" port="8081"/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_FilterCollaboration" doc:id="flow-id">
+    <http:listener doc:name="Listener" doc:id="listener-id" config-ref="HTTP_Listener_config" path="/processHL7">
+    </http:listener>
+    <dw:transform-message doc:name="Transform Message" doc:id="transform-id">
+      <dw:set-payload><![CDATA[
+        %dw 2.0
+        output application/json
+        var input_map = {}
+        var output_map = {}
+        var skip = false
+        try {
+          input_map = parse_hl7_message(payload)
+          if (input_map containsKey 'MSA') {
+            var msa_segments = input_map['MSA']
+            if (sizeOf(msa_segments) > 1) {
+              log('More than one MSA segment present.')
+            }
+            var msa_text_message = msa_segments[0]['MSA-3-text_message']
+            if (msa_text_message contains 'ZZZ') {
+              skip = true
+              log('Message will be skipped.')
+            } else {
+              log('Message will be processed.')
+            }
+          } else {
+            log('No MSA segments found.')
+          }
+          if (!skip) {
+            output_map['MSH'] = input_map['MSH']
+            output_map['MSA'] = input_map['MSA']
+          } else {
+            output_map = {}
+          }
+          return skip ? '' : write(output_map, 'application/json')
+        } catch (error) {
+          log('Error processing message: ' ++ error.message)
+          return ''
+        }
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: #[payload]" level="INFO" doc:name="Log Processed Message"/>
+  </flow>
+</mule>
