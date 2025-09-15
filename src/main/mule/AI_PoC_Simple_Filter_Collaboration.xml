@@ -1,0 +1,49 @@
+<package>
+<flow name="AI_PoC_Simple_Filter">
+    <http:listener config-ref="HTTP_Listener_Configuration" path="/hl7" doc:name="HTTP Listener"/>
+    <logger level="INFO" doc:name="Log Incoming Message" message="Received message: #[payload]"/>
+    <set-variable variableName="input_map" value="#[{}]" doc:name="Initialize input_map"/>
+    <set-variable variableName="output_map" value="#[{}]" doc:name="Initialize output_map"/>
+    <set-variable variableName="skip" value="false" doc:name="Initialize skip"/>
+    <try doc:name="Try">
+        <set-variable variableName="input_map" value="#[parse_hl7_message(payload)]" doc:name="Parse HL7 Message"/>
+        <choice doc:name="Check MSA Segments">
+            <when expression="#[vars.input_map['MSA'] != null]">
+                <logger level="INFO" doc:name="Log MSA Count" message="More than one MSA segment present: #[vars.input_map['MSA'].size() > 1]"/>
+                <set-variable variableName="msa_text_message" value="#[vars.input_map['MSA'][0]['MSA-3-text_message']]" doc:name="Get MSA-3 Text Message"/>
+                <choice doc:name="Check for 'ZZZ'">
+                    <when expression="#[vars.msa_text_message contains 'ZZZ']">
+                        <set-variable variableName="skip" value="true" doc:name="Set Skip to True"/>
+                        <logger level="INFO" doc:name="Log Skip" message="Message will be skipped."/>
+                    </when>
+                    <otherwise>
+                        <logger level="INFO" doc:name="Log Process" message="Message will be processed."/>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <logger level="INFO" doc:name="Log No MSA" message="No MSA segments found."/>
+                <set-variable variableName="skip" value="false" doc:name="Set Skip to False"/>
+            </otherwise>
+        </choice>
+        <choice doc:name="Process Output Map">
+            <when expression="#[vars.skip]">
+                <set-variable variableName="output_map" value="#[{}]" doc:name="Clear Output Map"/>
+            </when>
+            <otherwise>
+                <set-variable variableName="output_map['MSH']" value="#[vars.input_map['MSH']]" doc:name="Copy MSH"/>
+                <set-variable variableName="output_map['MSA']" value="#[vars.input_map['MSA']]" doc:name="Copy MSA"/>
+            </otherwise>
+        </choice>
+        <set-variable variableName="output_string" value="#[to_string(vars.output_map)]" doc:name="Convert Output Map to String"/>
+        <set-variable variableName="input_map" value="#[{}]" doc:name="Clear input_map"/>
+        <set-variable variableName="output_map" value="#[{}]" doc:name="Clear output_map"/>
+        <logger level="INFO" doc:name="Log Output String" message="Output String: #[vars.output_string]"/>
+        <set-payload value="#[vars.output_string]" doc:name="Set Payload"/>
+    </try>
+    <catch-exception doc:name="Catch Exception">
+        <logger level="ERROR" doc:name="Log Error" message="Error occurred: #[error]"/>
+        <set-payload value="''" doc:name="Set Empty Payload"/>
+    </catch-exception>
+</flow>
+</package>
