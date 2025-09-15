@@ -1,0 +1,18 @@
+package src.main.mule;
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/documentation" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/documentation http://www.mulesoft.org/schema/mule/documentation/current/mule-documentation.xsd">
+  <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
+    <http:listener-connection/>
+  </http:listener-config>
+  <flow name="AI_PoC_Simple_Filter" doc:id="AI_PoC_Simple_Filter">
+    <http:listener doc:name="Listener" config-ref="HTTP_Listener_config" path="/process-hl7"/>
+    <dw:transform-message doc:name="Transform HL7 to JSON">
+      <dw:input-payload mimeType="application/json"/>
+      <dw:set-payload><![CDATA[
+        process_hl7_ack(payload.message_string)
+      ]]></dw:set-payload>
+    </dw:transform-message>
+    <logger message="Processed message: ++ payload" level="INFO" doc:name="Log Processed Message"/>
+    <set-payload value="payload" doc:name="Set Payload"/>
+  </flow>
+</mule>
